@@ -1,0 +1,4 @@
+* Primero se crean las bases de datos y se pueblan las tablas.
+* Se crea función que permite a partir de el año mínimo y máximo generar los cuatrienios como varchar
+* Se crea el SP que denormaliza las tablas transaccionales. Se utiliza la extensión dblink para extraer datos
+de bases distinta de la analítica.
