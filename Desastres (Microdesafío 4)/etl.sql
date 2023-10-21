@@ -95,7 +95,8 @@ from
 
 call pETL_Desastres(2031,2034)
 ;
-
+call pETL_Desastres(2023,2026)
+;
 select *
 from 
 	desastres_final df 

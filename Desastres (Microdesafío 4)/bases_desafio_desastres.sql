@@ -103,3 +103,18 @@ INSERT INTO clima VALUES (2031, 23.1, 226.3);
 INSERT INTO clima VALUES (2032, 23.3, 226.0);
 INSERT INTO clima VALUES (2033, 23.5, 225.9);
 INSERT INTO clima VALUES (2034, 23.7, 225.8);
+
+--- Cambio valor viejo y luego actualizo
+
+update clima
+set oxigeno= 23000
+where 
+	año=2023
+;
+
+--- vuelvo al original 
+
+update clima
+set oxigeno= 230
+where 
+	año=2023
