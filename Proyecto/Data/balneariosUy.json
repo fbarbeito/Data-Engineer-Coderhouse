@@ -1,0 +1,19 @@
+[
+	{
+	"balneario":"Punta del Este",
+	"latitud":-34.9426299,
+	"longitud":-54.9520213,
+	"Departamento":"Maldonado"
+	},
+	{
+	"balneario":"Punta del Diablo",
+	"latitud":-34.0445492,
+	"longitud":-53.6052188
+	},
+	{
+	"balneario":"Cabo Polonio",
+	"latitud":-34.3993252,
+    "longitud":-53.8226403,
+	"Departamento":"Rocha"
+	}
+]
