@@ -26,7 +26,7 @@ def etl_current_weather(APIkey,balneario):
         df['beach'] = [balneario['balneario'][i]]
         df_coord = pd.DataFrame([j['coord']])
         df_weather = pd.DataFrame(j['weather']).drop({'icon'},axis=1).rename({'id':'weather_id'},axis=1)
-
+        j
         try:
             df_main = pd.DataFrame([j['main']]).drop({'sea_level','grnd_level'},axis=1)
         except:
@@ -46,8 +46,9 @@ def etl_current_weather(APIkey,balneario):
         df_city_id = pd.DataFrame([j['id']],columns=['city_id'])
 
         df = pd.concat([df_dt,df,df_sys,df_coord,df_city_id,df_city,df_weather,df_main,df_wind,df_visibility,df_clouds],axis=1)
+        df = df.ffill() # Puede haber más de una descripción del estado del clima 
         df_current = pd.concat([df_current,df],axis=0)
-    
+        
     for i in ['dt','sunset','sunrise']:
         df_current[i] = df_current[i].apply(fromunix_totimestamp)
     return df_current
@@ -78,7 +79,7 @@ def etl_weather(APIkey,balneario,current=1):
             j = resp.json()
 
             df['beach'] = [balneario['balneario'][i]]
-            df_coord = pd.DataFrame([j['coord']])
+            df_coord = pd.DataFrame([j['coord']])[['lon','lat']]
             df_weather = pd.DataFrame(j['weather']).drop({'icon'},axis=1).rename({'id':'weather_id'},axis=1)
 
             try:
@@ -100,6 +101,8 @@ def etl_weather(APIkey,balneario,current=1):
             df_city_id = pd.DataFrame([j['id']],columns=['city_id'])
 
             df = pd.concat([df_dt,df,df_sys,df_coord,df_city_id,df_city,df_weather,df_main,df_wind,df_visibility,df_clouds],axis=1)
+            # Puede haber más de una descripción del estado del clima 
+            df = df.ffill()
             df_current_or_forecast = pd.concat([df_current_or_forecast,df],axis=0)  
 
         else: 
@@ -115,7 +118,7 @@ def etl_weather(APIkey,balneario,current=1):
                 df['country'] = j['city']['country']
                 df['sunrise'] = j['city']['sunrise']
                 df['sunset'] = j['city']['sunset']
-                df_coord = pd.DataFrame([j['city']['coord']])
+                df_coord = pd.DataFrame([j['city']['coord']])[['lon','lat']]
                 df = pd.concat([df,df_coord],axis=1)
                 df['city_id'] = j['city']['id']
                 df['city_name'] = j['city']['name']
@@ -126,8 +129,53 @@ def etl_weather(APIkey,balneario,current=1):
                 df['visibility'] = j['list'][i]['visibility']
                 df_cloud = pd.DataFrame([j['list'][x]['clouds']]).rename({'all':'clouds'},axis=1)
                 df = pd.concat([df,df_cloud],axis=1)
+                # Puede haber más de una descripción del estado del clima 
+                df = df.ffill()
                 df_current_or_forecast = pd.concat([df_current_or_forecast,df])
     
     for i in ['dt','sunset','sunrise']:
         df_current_or_forecast[i] = df_current_or_forecast[i].apply(fromunix_totimestamp)
     return df_current_or_forecast
+
+def conn_string(config_path, config_section):
+    '''
+    input: path-folder de las claves y la sección
+    '''
+    from configparser import ConfigParser
+    # Lee el archivo de configuración
+    parser = ConfigParser()
+    parser.read(config_path)
+    
+    # Lee la sección
+    config = parser[config_section]
+    host = config['host']
+    port = config['puerto']
+    dbname = config['db']
+    username = config['user']
+    pwd = config['pwd']
+
+    # Construye la cadena de conexión
+    conn_string = f'postgresql://{username}:{pwd}@{host}:{port}/{dbname}?sslmode=require'
+
+    return conn_string
+
+def conn_apikey(path):
+    '''
+    input: path-folder de las claves y la sección
+    '''
+    from configparser import ConfigParser
+    # Lee el archivo de configuración
+    parser = ConfigParser()
+    parser.read(path)
+    parser.read('config.ini')
+    APIkey = parser['API']['Key']
+    return APIkey
+
+def connect_to_db(conn_string):
+    """
+    Crea una conexión a la base de datos.
+    """
+    import sqlalchemy as sa
+    engine = sa.create_engine(conn_string)
+    conn = engine.connect()
+    return conn, engine
