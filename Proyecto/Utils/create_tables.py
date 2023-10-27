@@ -1,7 +1,7 @@
 def exec_create_tables():
-    from functions import conn_string,connect_to_db
+    from Utils.functions import conn_string,connect_to_db
 
-    with open('create_tables.sql','r') as file:
+    with open('Utils/create_tables.sql','r') as file:
         queries = file.read()
 
     conn, engine = connect_to_db(conn_string('config.ini','DB_Amazon'))

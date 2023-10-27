@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS {schema}.stg_current_weather_uybeach
     gust FLOAT,
     visibility INT,
     clouds INT
-)
+) DISTKEY(city_id) SORTKEY(dt)
 ;
 
 CREATE TABLE IF NOT EXISTS {schema}.stg_forecast_weather_uybeach
@@ -51,4 +51,5 @@ CREATE TABLE IF NOT EXISTS {schema}.stg_forecast_weather_uybeach
     gust FLOAT,
     visibility INT,
     clouds INT
-)
+) DISTKEY(city_id) SORTKEY(dt)
+;

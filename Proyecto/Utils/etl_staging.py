@@ -1,6 +1,6 @@
 def exec_etl_staging():
     import pandas as pd
-    from functions import etl_weather,conn_apikey,conn_string,connect_to_db
+    from Utils.functions import etl_weather,conn_apikey,conn_string,connect_to_db
 
     # Extraigo API key
     APIkey = conn_apikey('config.ini')
