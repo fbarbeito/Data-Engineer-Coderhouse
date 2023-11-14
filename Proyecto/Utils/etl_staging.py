@@ -10,12 +10,18 @@ def exec_etl_staging():
 
     # current weather 
     df_current = etl_weather(APIkey=APIkey,balneario=balneario,current=1)
+    
+    # forecast weather
     df_forecast = etl_weather(APIkey=APIkey,balneario=balneario,current=0)
 
     # impacto en Redfshit
     conn, engine = connect_to_db(conn_string('config.ini','DB_Amazon'))
+
     df_current.to_sql(name='stg_current_weather_uybeach',schema='barbeito26_coderhouse',con=conn,if_exists='append',index=False)
     df_forecast.to_sql(name='stg_forecast_weather_uybeach',schema='barbeito26_coderhouse',con=conn,if_exists='append',index=False)
+    
+    conn.invalidate() # invalido la conexión 
+    engine.dispose() # limpieza de la engine
 
 if __name__ == '__main__':
     exec_etl_staging()

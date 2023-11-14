@@ -53,3 +53,22 @@ CREATE TABLE IF NOT EXISTS {schema}.stg_forecast_weather_uybeach
     clouds INT
 ) DISTKEY(city_id) SORTKEY(dt)
 ;
+
+CREATE TABLE IF NOT EXISTS {schema}.dim_beach
+(
+    beachid INT,
+	beach VARCHAR(50),
+	lon FLOAT,
+	lat FLOAT,
+	city_name VARCHAR(50)
+) DISTKEY(beachid) 
+
+;
+
+CREATE TABLE IF NOT EXISTS {schema}.dim_weather
+(
+    weather_id INT,
+	main VARCHAR(50),
+	description VARCHAR(50)
+) DISTKEY(weather_id) 
+;

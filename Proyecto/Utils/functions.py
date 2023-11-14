@@ -6,21 +6,24 @@ def etl_weather(APIkey,balneario,current=1):
     import pandas as pd 
     import datetime as dt 
     import requests
+    # creo un dataframe vacio para ir concatenando los auxiliares
     df_current_or_forecast = pd.DataFrame()
+
     # funcion lambda para transformar a utc
     fromunix_totimestamp = lambda x: dt.datetime.utcfromtimestamp(x)
+    
     # funcion lambda para sustraer segundos a un datetime
     seconds_dif = lambda x: dt.timedelta(seconds=x)
     for i in range(0,balneario.shape[0]):
         
-        
-
+        # extraigo geolocalizacion
         lat = balneario['latitud'][i]
         lon = balneario['longitud'][i]
+        
         if current == 1:
             df = pd.DataFrame()
             url = 'https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={APIkey}&units=metric'.format(lat=lat,lon=lon,APIkey=APIkey)
-
+            # consulto la API
             resp = requests.get(url)
             j = resp.json()
 
@@ -38,6 +41,7 @@ def etl_weather(APIkey,balneario,current=1):
             df_clouds = pd.DataFrame([j['clouds']]).rename({'all':'clouds'},axis=1)
             df_dt = pd.DataFrame([j['dt']],columns=['dt'])
             df_shifted_dt = pd.DataFrame([j['timezone']],columns=['dt_shift'])
+
             try:
                 df_sys = pd.DataFrame([j['sys']]).drop({'type','id'},axis=1)
             except:
@@ -47,8 +51,10 @@ def etl_weather(APIkey,balneario,current=1):
             df_city_id = pd.DataFrame([j['id']],columns=['city_id'])
         
             df = pd.concat([df_dt,df,df_sys,df_coord,df_city_id,df_city,df_weather,df_main,df_wind,df_visibility,df_clouds,df_shifted_dt],axis=1)
+            
             # Puede haber más de una descripción del estado del clima 
             df = df.ffill()
+            # concateno con el df princiapl
             df_current_or_forecast = pd.concat([df_current_or_forecast,df],axis=0)  
             
         else: 
@@ -57,7 +63,7 @@ def etl_weather(APIkey,balneario,current=1):
             j = resp.json()
             for x in range(0,len(j['list'])):
                 
-
+                # extraigo caracteristicas pricipales
                 df = pd.DataFrame()
                 df['dt'] = [j['list'][x]['dt']]
                 df['dt_shift'] = [j['city']['timezone']]
@@ -76,15 +82,21 @@ def etl_weather(APIkey,balneario,current=1):
                 df['visibility'] = j['list'][i]['visibility']
                 df_cloud = pd.DataFrame([j['list'][x]['clouds']]).rename({'all':'clouds'},axis=1)
                 df = pd.concat([df,df_cloud],axis=1)
+
+
                 # Puede haber más de una descripción del estado del clima 
                 df = df.ffill()
+
+                # concateno con el df princiapl
                 df_current_or_forecast = pd.concat([df_current_or_forecast,df])
 
+    # hago loop sobre las variables temporales para formatearlas
     for i in ['dt','sunset','sunrise']:
         df_current_or_forecast[i] = df_current_or_forecast[i].apply(fromunix_totimestamp)
 
     # Ajusto la hora para que sea acorde a Uy
     df_current_or_forecast['dt'] = df_current_or_forecast['dt'] + df_current_or_forecast['dt_shift'].apply(seconds_dif)
+    
     # Borro el ajuste
     df_current_or_forecast = df_current_or_forecast.drop({'dt_shift'},axis=1)
     return df_current_or_forecast
@@ -128,6 +140,8 @@ def connect_to_db(conn_string):
     Crea una conexión a la base de datos.
     """
     import sqlalchemy as sa
+    
     engine = sa.create_engine(conn_string)
     conn = engine.connect()
+
     return conn, engine

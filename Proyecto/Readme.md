@@ -15,3 +15,4 @@ create_tables.py: crea las tablas de staging (en este entregable) que se pueblan
 es etl_staging. Consume es script sql create_tables.sql.
 etl_staging.py: extrae datos de la API https://openweathermap.org/api, hace las transformaciones necesarias y las impacta
 en las tablas de staging en Amazon Redfshit.
+etl_dim.py: toma las tablas de staging y extrae las dimensiones y las impacta en Amazon Redfshit.
