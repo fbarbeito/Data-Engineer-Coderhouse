@@ -1,0 +1,53 @@
+[
+	{
+	"balneario":"Punta del Este",
+	"latitud":-34.9426299,
+	"longitud":-54.9520213
+	},
+	{
+	"balneario":"Punta del Diablo",
+	"latitud":-34.0445492,
+	"longitud":-53.6052188
+	},
+	{
+	"balneario":"Cabo Polonio",
+	"latitud":-34.3993252,
+    "longitud":-53.8226403
+	},
+	{
+	"balneario":"La Pedrera",
+	"latitud":-34.5984859,
+    "longitud":-54.1572423
+	},
+	{
+	"balneario":"Piriápolis",
+	"latitud":-34.8645456,
+    "longitud":-55.3184232
+	},
+	{
+	"balneario":"José Ignacio",
+	"latitud":-34.8354017,
+    "longitud":-54.6715583
+	},
+	{
+	"balneario":"Barra de Valizas",
+	"latitud":-34.3354396,
+    "longitud":-53.8070623
+	},
+	{
+	"balneario":"San Gregorio del Polanco",
+	"latitud":-32.6043908,
+    "longitud":-55.8520641
+	},
+	{
+	"balneario":"Cuchilla Alta",
+	"latitud":-34.7903886,
+    "longitud":-55.5075563
+	},
+	{
+	"balneario":"Las Cañas",
+	"latitud":-33.1694271,
+    "longitud":-58.3665901
+	}
+
+]
