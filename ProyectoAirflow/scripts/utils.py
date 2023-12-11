@@ -25,7 +25,7 @@ def etl_weather(APIkey,balneario,current=1):
         
         if current == 1:
             df = pd.DataFrame()
-            url = 'https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={APIkey}&units=metric'.format(lat=lat,lon=lon,APIkey=APIkey)
+            url = 'https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={APIkey}&units=metric&lang=es'.format(lat=lat,lon=lon,APIkey=APIkey)
             # consulto la API
             logging.info(f"Obteniendo datos de openweathermap...")
             resp = requests.get(url)
@@ -66,7 +66,7 @@ def etl_weather(APIkey,balneario,current=1):
             df_current_or_forecast = pd.concat([df_current_or_forecast,df],axis=0)  
             
         else: 
-            url_forecast = 'https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={APIkey}&units=metric&cnt=24'.format(lat=lat,lon=lon,APIkey=APIkey)
+            url_forecast = 'https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={APIkey}&units=metric&cnt=24&lang=es'.format(lat=lat,lon=lon,APIkey=APIkey)
             
             logging.info(f"Obteniendo datos de openweathermap...")
             resp = requests.get(url_forecast)
