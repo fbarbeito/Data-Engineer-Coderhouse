@@ -1,14 +1,20 @@
+import pandas as pd
+import logging
+import pandas as pd 
+import datetime as dt 
+import requests
+import logging
+from configparser import ConfigParser
+import sqlalchemy as sa
+import smtplib
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 def etl_weather(APIkey,balneario,current=1):
     '''
     input: API-Key de open weather y dataframe de los balnearios con su nombre y ubicación.
     return: Dataframe con caracteristicas del clima actual de los diferentes balnearios consultados en la Api
     '''
-    import pandas as pd 
-    import datetime as dt 
-    import requests
-    import logging
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
+    
     # creo un dataframe vacio para ir concatenando los auxiliares
     df_current_or_forecast = pd.DataFrame()
 
@@ -119,7 +125,7 @@ def conn_string(config_path, config_section):
     '''
     input: path-folder de las claves y la sección
     '''
-    from configparser import ConfigParser
+    
     # Lee el archivo de configuración
     parser = ConfigParser()
     parser.read(config_path)
@@ -141,31 +147,38 @@ def conn_apikey(path):
     '''
     input: path-folder de las claves y la sección
     '''
-    from configparser import ConfigParser
+    
     # Lee el archivo de configuración
     parser = ConfigParser()
     parser.read(path)
     APIkey = parser['API']['Key']
     return APIkey
 
+def conn_mail(path):
+    '''
+    input: path-folder de las claves y la sección
+    '''
+    
+    # Lee el archivo de configuración
+    parser = ConfigParser()
+    parser.read(path)
+    mail = parser['send_mail_airflow']['mail']
+    pwd = parser['send_mail_airflow']['pwd']
+    return mail,pwd
+
 def connect_to_db(conn_string):
     """
     Crea una conexión a la base de datos.
     """
-    import sqlalchemy as sa
-    
     engine = sa.create_engine(conn_string)
     conn = engine.connect()
 
     return conn, engine
 
-def exec_etl_staging(path_cred,path_beach):
+def exec_etl_staging(path_cred,path_beach,schema):
     ''''
     Ejecuta el etl stagging. Consulta la API e impacta los datos en Redfshit.
     '''
-    import pandas as pd
-    import logging
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     # Extraigo API key
     APIkey = conn_apikey(path_cred)
@@ -186,8 +199,8 @@ def exec_etl_staging(path_cred,path_beach):
     # impacto en Redfshit
     conn, engine = connect_to_db(conn_string(path_cred,'DB_Amazon'))
 
-    df_current.to_sql(name='stg_current_weather_uybeach',schema='barbeito26_coderhouse',con=conn,if_exists='append',index=False)
-    df_forecast.to_sql(name='stg_forecast_weather_uybeach',schema='barbeito26_coderhouse',con=conn,if_exists='append',index=False)
+    df_current.to_sql(name='stg_current_weather_uybeach',schema=schema,con=conn,if_exists='append',index=False)
+    df_forecast.to_sql(name='stg_forecast_weather_uybeach',schema=schema,con=conn,if_exists='append',index=False)
     logging.info("Impacto exitoso en Redfshit.")
     conn.invalidate() # invalido la conexión 
     engine.dispose() # limpieza de la engine
@@ -310,3 +323,110 @@ def etl_facttable(path_cred,schema):
     engine.dispose() # limpieza de la engine
 
 
+def datos_mensaje_mail(path_cred,beachid,schema):
+    '''
+    Envío de mail con la información del tiempo actual y las estadísticas futuras
+    '''
+    querie = '''
+    select 
+        db.beach as playa,
+        dw.description as tiempo,
+        f."date" as fecha,
+        f."hour" as hora,
+        f.sunrisehour as salidaasol,
+        f.sunsethour as ocultasol,
+        f.temp as temperaturactual,
+        --f.feels_like as sensaciontermica,
+        f.temp_next24h as temperaturaproxima24,
+        --f.feels_like_next24h as sensaciontermicaproxima24,
+        f.temp_min_next24h as temperaturaminima24,
+        f.temp_max_next24h as temperaturamaxima24,
+        f.temp_nextfewh as temperaturproximahs--,
+        --f.feels_like_nextfewh as sensaciontermicaproximahs,
+        --f.temp_min_nextfewh as temperaturaminimaproximahs,
+        --f.temp_max_nextfewh as temperaturamaximamaproximahs
+    from(
+    select 
+        *,
+        row_number() over (order by date desc, hour desc ) as index 
+    from 
+        {schema}.fact_weather_uybeach
+    where 
+        beachid = {beachid}
+    ) as f 
+        left join {schema}.dim_beach db on db.beachid = f.beachid 
+        left join {schema}.dim_weather dw on dw.weather_id = f.weather_id 
+    where 
+        index=1
+    '''
+
+    # Creo en engine para conectar con la base de redfshit
+    conn, engine = connect_to_db(conn_string(path_cred,'DB_Amazon'))
+    results = conn.execute(querie.format(beachid=beachid,schema=schema))
+    df = pd.DataFrame(results)
+    return df
+
+def enviomail(path,bechid,enviara,schema):
+    '''
+    Se envía mail al destinatario con la data de la playa
+    '''
+    mail,pwd = conn_mail(path=path) # extraigo claves de mail
+
+    logging.info('Extrayendo datos de la base')
+
+    df = datos_mensaje_mail(path_cred=path,beachid=bechid,schema=schema) # extraigo data de la tabla de hechos y dimensiones
+    
+    logging.info('Configurando mensaje y asunto del mail.')
+    
+    mensajemail = ''' 
+    - Tiempo: {tiempo}
+    - Salida del sol: {salidasol}
+    - Ocultamiento del sol: {ocultasol}
+    - Temperatura actual: {temperaturactual} grados Celsius
+    - Temperatura en las siguientes horas: {temperaturproximahs} grados Celsius
+    - Temperatura en las siguientes 24 horas: {temperaturaproxima24} grados Celsius
+    - Temperatura MIN en las siguientes 24 horas: {temperaturaminima24} grados Celsius
+    - Temperatura MAX en las siguientes 24 horas: {temperaturamaxima24} grados Celsius
+    '''
+    asunto = '''
+    Estado del tiempo de {fecha}, hora {hora} en la playa {playa}.
+    '''
+    
+    fecha = df['fecha'][0].strftime('%Y-%m-%d')
+    hora = df['hora'][0]
+    playa = df['playa'][0]
+    salidasol = df['salidaasol'][0].strftime('%H:%M:%S')
+    ocultasol = df['ocultasol'][0].strftime('%H:%M:%S')
+    temperaturactual = df['temperaturactual'][0]
+    temperaturaproxima24 = df['temperaturaproxima24'][0]
+    temperaturaminima24 = df['temperaturaminima24'][0]
+    temperaturamaxima24 = df['temperaturamaxima24'][0]
+    temperaturproximahs = df['temperaturproximahs'][0]
+    tiempo =  df['tiempo'][0]
+
+    mensajemailfill = mensajemail.format(salidasol=salidasol,ocultasol=ocultasol,temperaturactual=temperaturactual,temperaturamaxima24=temperaturamaxima24,temperaturaminima24=temperaturaminima24,temperaturproximahs=temperaturproximahs,tiempo=tiempo,temperaturaproxima24=temperaturaproxima24)
+    asuntofill = asunto.format(fecha=fecha,hora=hora,playa=playa)
+
+    logging.info('Enviando mail...')
+
+    try:
+        x=smtplib.SMTP('smtp.gmail.com',587)
+        x.starttls()
+        x.login(mail,pwd)
+        message='Subject: {}\n\n{}'.format(asuntofill,mensajemailfill)
+        x.sendmail(mail,enviara,message)
+        print('Exito')
+    except Exception as exception:
+        print(exception)
+        print('Failure')
+
+    logging.info('Envio del mail con éxito.')
+
+def enviomail_por_listas(rutalistacorreos,pathclaves,schema):
+    '''
+    se envía el mail a través de listas. 
+    '''
+    df = pd.read_table(rutalistacorreos,sep=',')
+    for beach in df['beachid'].unique():
+        df_beach = df.loc[df['beachid']==beach]
+        enviomail(path=pathclaves,bechid=beach,enviara=df_beach['correo'].to_list(),schema=schema)
